@@ -2,18 +2,23 @@ import json
 import requests
 from openai import OpenAI
 from typing import List, Dict, Any, Optional
-
+from tools.registry import create_tools_from_functions
+import inspect
+from tools.registry2 import ToolRegistry,function_to_tool_enhanced
 # ============================================
 # 1. 初始化客户端
 # ============================================
 client = OpenAI(
-    api_key="xxx",  # 替换为您的 API Key
+    api_key="sk-xxx",  # 替换为您的 API Key
     base_url="https://api.deepseek.com"
 )
 
 # ============================================
 # 2. 工具函数（实际执行的代码）
 # ============================================
+# 创建全局注册器
+registry = ToolRegistry()
+@registry.register
 def get_weather_from_ip():
     """根据IP获取天气"""
     try:
@@ -39,7 +44,7 @@ def get_weather_from_ip():
         )
     except Exception as e:
         return f"获取天气失败: {e}"
-
+@registry.register
 def get_current_time():
     """获取当前时间"""
     from datetime import datetime
@@ -48,7 +53,7 @@ def get_current_time():
 # ============================================
 # 3. 工具描述（告诉API有哪些工具可用）
 # ============================================
-tools = [
+tools_original = [
     {
         "type": "function",
         "function": {
@@ -75,6 +80,12 @@ tools = [
     }
 ]
 
+tools_original2 = create_tools_from_functions(
+    get_weather_from_ip,
+    get_current_time
+)
+
+tools = registry.get_tools()
 # ============================================
 # 4. 工具执行器（根据名称调用对应函数）
 # ============================================
