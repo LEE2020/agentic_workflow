@@ -1,3 +1,5 @@
+import inspect
+from typing import get_type_hints, Callable, Dict, List, Any
 def function_to_tool_enhanced(func):
     """
     增强版：将 Python 函数转换为工具描述
@@ -79,11 +81,13 @@ class ToolRegistry:
     def __init__(self):
         self._tools = []
         self._functions = []
+        self._tool_map: Dict[str, Callable] = {}
     
     def register(self, func):
         """注册工具函数"""
         self._functions.append(func)
         self._tools.append(function_to_tool_enhanced(func))
+        self._tool_map[func.__name__] = func
         return func
     
     def get_tools(self):
@@ -94,3 +98,16 @@ class ToolRegistry:
         """获取所有工具函数"""
         return self._functions
 
+    def get_tool_map(self) -> Dict[str, Callable]:
+        """获取工具映射 {name: function}"""
+        return self._tool_map
+
+    def execute(self, tool_name: str, arguments: dict):
+        """执行工具"""
+        if tool_name in self._tool_map:
+            return self._tool_map[tool_name](**arguments)
+        return f"未知工具: {tool_name}"
+    
+    
+# 创建全局注册器实例
+registry = ToolRegistry()

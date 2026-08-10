@@ -1,5 +1,5 @@
 # agentic_workflow
-这个程序展示了如何在不依赖高级库的情况下，用原生 OpenAI SDK 实现 max_turns 功能。它包含了 Function Calling 的完整流程：
+这个 example.py 程序展示了如何在不依赖高级库的情况下，用原生 OpenAI SDK 实现 Turning functions into tools功能。它包含了完整流程：
 
 定义工具函数（实际执行逻辑）
 
@@ -25,3 +25,5 @@ Function Calling 的核心机制
 外部执行：应用程序执行工具
 
 结果整合：LLM 根据结果生成回答
+
+2. 使用 deeplearning.ai的课程中的库来实现 Turning functions into tools ,example2.py

@@ -1,7 +1,7 @@
 import requests
-from .base import tool_function, global_registry
+from .registry import registry
 
-@global_registry.register_decorator()
+@registry.register
 def get_weather_from_ip():
     """
     根据用户的IP地址获取当前所在位置的天气信息
@@ -40,7 +40,7 @@ def get_weather_from_ip():
         return f"获取天气信息失败: {str(e)}"
 
 
-@global_registry.register_decorator()
+@registry.register
 def get_weather_by_city(city: str, days: int = 1):
     """
     根据城市名称获取天气信息
@@ -65,14 +65,5 @@ def get_weather_by_city(city: str, days: int = 1):
     )
 
 
-@global_registry.register_decorator()
-def get_current_time():
-    """
-    获取当前时间
-    """
-    from datetime import datetime
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-# 导出工具函数
-__all__ = ['get_weather_from_ip', 'get_weather_by_city', 'get_current_time']
