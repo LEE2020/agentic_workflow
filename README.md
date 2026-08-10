@@ -34,24 +34,26 @@ LLM 理解结果 → 生成自然语言回答
 ---
 
 ## 📁 项目结构
+```text
 agentic_workflow/
-├── example.py # 原生 OpenAI SDK 实现
-├── example2.py # DeepLearning.AI 课程库实现
-├── main.py # 主程序入口（多客户端支持）
-├── clients/ # 多客户端支持
-│ ├── init.py
-│ ├── base.py # 客户端基类
-│ ├── deepseek.py # DeepSeek 客户端
-│ ├── openai.py # OpenAI 客户端
-│ └── aisuite.py # AISuite 客户端
-├── tools/ # 工具层
-│ ├── init.py
-│ ├── registry.py # 工具注册器
-│ ├── weather.py # 天气工具
-│ ├── time.py # 时间工具
-│ ├── genqrcode.py # 二维码工具
-│ └── write_txt_file.py # 文件工具
+├── example.py              # 原生 OpenAI SDK 实现
+├── example2.py             # DeepLearning.AI 课程库实现
+├── main.py                 # 主程序入口（多客户端支持）
+├── clients/                # 多客户端支持
+│   ├── __init__.py         # 包初始化文件
+│   ├── base.py             # 客户端基类
+│   ├── deepseek.py         # DeepSeek 客户端
+│   ├── openai.py           # OpenAI 客户端
+│   └── aisuite.py          # AISuite 客户端
+├── tools/                  # 工具层
+│   ├── __init__.py         # 包初始化文件
+│   ├── registry.py         # 工具注册器
+│   ├── weather.py          # 天气工具
+│   ├── time.py             # 时间工具
+│   ├── genqrcode.py        # 二维码工具
+│   └── write_txt_file.py   # 文件工具
 └── README.md
+```
 
 
 ---
