@@ -1,29 +1,64 @@
-# agentic_workflow
-这个 example.py 程序展示了如何在不依赖高级库的情况下，用原生 OpenAI SDK 实现 Turning functions into tools功能。它包含了完整流程：
+# Agentic Workflow - Function Calling 实现
+📖 项目简介
+本项目展示了两种不同的方式来实现 Function Calling（工具调用），理解大语言模型如何将自然语言转换为可执行的工具调用。通过完整的代码示例，理解其内部工作机制，并根据需要灵活定制。
 
-定义工具函数（实际执行逻辑）
+🎯 核心概念
+什么是 Function Calling？
+Function Calling 是一种让大语言模型（LLM）能够调用外部工具/函数的机制。LLM 不直接执行代码，而是生成结构化的调用指令，由应用程序执行具体的工具函数。
 
-定义工具描述（告诉 AI 有哪些工具）
+工作流程
+用户输入 → LLM 分析 → 判断是否需要工具 → 返回调用指令
+                                          ↓
+                              应用程序执行工具 → 返回结果
+                                          ↓
+                              LLM 理解结果 → 生成自然语言回答
 
-循环调用 API（支持多轮工具调用）
+✨ 功能特点
+🔧 完整的 Function Calling 流程
 
-执行工具并累积结果（自动化的工具调用循环）
+🔄 支持多轮工具调用（自定义 max_turns）
+📊 详细的执行日志输出
+🛡️ 防止无限循环
+📦 支持多客户端切换（DeepSeek、OpenAI、AISuite）
+🎨 自动生成工具描述（通过装饰器注册）
 
-返回最终回答（生成自然语言响应）
+📁 项目结构
+agentic_workflow/
+├── example.py              # 原生 OpenAI SDK 实现
+├── example2.py             # DeepLearning.AI 课程库实现
+├── main.py                 # 主程序入口（多客户端支持）
+├── clients/                # 多客户端支持
+│   ├── __init__.py
+│   ├── base.py             # 客户端基类
+│   ├── deepseek.py         # DeepSeek 客户端
+│   ├── openai.py           # OpenAI 客户端
+│   └── aisuite.py          # AISuite 客户端
+├── tools/                  # 工具层
+│   ├── __init__.py
+│   ├── registry.py         # 工具注册器
+│   ├── weather.py          # 天气工具
+│   ├── time.py             # 时间工具
+│   ├── genqrcode.py        # 二维码工具
+│   └── write_txt_file.py   # 文件工具
+└── README.md
 
-通过这个实现，您可以深入理解 Function Calling 的内部工作机制，并根据需要灵活定制。
+🚀 快速开始
+# 基础依赖
+pip install openai requests
+# 课程库（用于 example2.py）
+pip install aisuite
+# 二维码支持（可选）
+pip install qrcode Pillow
+# 设置环境变量
+export DEEPSEEK_API_KEY="your-api-key"
+# 或
+export OPENAI_API_KEY="your-api-key"
 
-Function Calling 的核心机制
-工具注册：将函数描述为 JSON Schema
+# 运行原生实现
+python example.py
 
-意图识别：LLM 判断是否需要工具
+# 运行课程库实现
+python example2.py
 
-工具选择：LLM 选择最合适的工具
-
-参数生成：LLM 生成调用参数
-
-外部执行：应用程序执行工具
-
-结果整合：LLM 根据结果生成回答
-
-2. 使用 deeplearning.ai的课程中的库来实现 Turning functions into tools ,example2.py
+# 运行主程序
+python main.py
