@@ -23,6 +23,7 @@ Function Calling 是一种让大语言模型（LLM）能够调用外部工具/�
 🎨 自动生成工具描述（通过装饰器注册）
 
 📁 项目结构
+text
 agentic_workflow/
 ├── example.py              # 原生 OpenAI SDK 实现
 ├── example2.py             # DeepLearning.AI 课程库实现
@@ -43,22 +44,17 @@ agentic_workflow/
 └── README.md
 
 🚀 快速开始
-# 基础依赖
+### 基础依赖
 pip install openai requests
-# 课程库（用于 example2.py）
 pip install aisuite
-# 二维码支持（可选）
 pip install qrcode Pillow
-# 设置环境变量
+### 设置环境变量
 export DEEPSEEK_API_KEY="your-api-key"
-# 或
 export OPENAI_API_KEY="your-api-key"
 
-# 运行原生实现
+### 运行原生实现
 python example.py
-
-# 运行课程库实现
+### 运行课程库实现
 python example2.py
-
-# 运行主程序
+### 运行主程序
 python main.py
