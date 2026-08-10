@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 # 1. 初始化客户端
 # ============================================
 client = OpenAI(
-    api_key="sk-e162c7df42a347f2b23753a748878f12",  # 替换为您的 API Key
+    api_key="xxx",  # 替换为您的 API Key
     base_url="https://api.deepseek.com"
 )
 
