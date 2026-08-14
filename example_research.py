@@ -251,9 +251,7 @@ def save_and_open_html(html: str, path: str = "research_report.html") -> str:
 
 if __name__ == "__main__":
     # 1) Research with tools
-    prompt_ = "整理归纳Hongwei Jin Assistant Computational Scientist 科研成果并总结,一定不要混淆同名人，其个人简介如下：\
-Hongwei Jin received his Ph.D. in computer science from the University of Illinois at Chicago in 2022.\
- Before that, he got his M.S. in applied mathematics from the Illinois Institute of Technology. 中文页面"
+    prompt_ = "计算机视觉"
     preliminary_report = generate_research_report_with_tools(prompt_)
     print("=== Research Report (preliminary) ===\n")
     print(preliminary_report)
