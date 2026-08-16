@@ -339,11 +339,342 @@ crossref_tool_def = {
 }
 
 
+def _search_tool_def(name: str, description: str) -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search keywords.",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return.",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    }
+
+
+def _crossref_by_prefixes(query: str, prefixes: list[str], max_results: int = 5) -> list[dict]:
+    """Search Crossref once per DOI prefix and merge results."""
+    per_prefix = max(1, min(max_results, 10))
+    merged = []
+    seen = set()
+    for prefix in prefixes:
+        data, error = _safe_get(
+            "https://api.crossref.org/works",
+            params={
+                "query": query,
+                "rows": per_prefix,
+                "filter": f"prefix:{prefix},type:journal-article",
+                "select": "DOI,title,author,container-title,published-print,"
+                "published-online,issued,type,publisher,is-referenced-by-count,URL",
+            },
+        )
+        if error or not data:
+            continue
+        for item in ((data.get("message") or {}).get("items")) or []:
+            doi = item.get("DOI")
+            if not doi or doi in seen:
+                continue
+            seen.add(doi)
+            titles = item.get("title") or []
+            venues = item.get("container-title") or []
+            merged.append(
+                {
+                    "source": "Crossref",
+                    "title": titles[0] if titles else None,
+                    "year": _crossref_year(item),
+                    "venue": venues[0] if venues else None,
+                    "publisher": item.get("publisher"),
+                    "doi": f"https://doi.org/{doi}",
+                    "url": item.get("URL") or f"https://doi.org/{doi}",
+                    "is_referenced_by_count": item.get("is-referenced-by-count", 0),
+                }
+            )
+            if len(merged) >= max_results:
+                return merged
+    return merged
+
+
+def wikipedia_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search English Wikipedia (wikipedia.org)."""
+    data, error = _safe_get(
+        "https://en.wikipedia.org/w/api.php",
+        params={
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "srlimit": max(1, min(max_results, 10)),
+            "format": "json",
+            "utf8": 1,
+        },
+    )
+    if error:
+        return [{"error": error}]
+
+    results = []
+    for hit in ((data.get("query") or {}).get("search")) or []:
+        title = hit.get("title")
+        slug = (title or "").replace(" ", "_")
+        results.append(
+            {
+                "source": "Wikipedia",
+                "title": title,
+                "url": f"https://en.wikipedia.org/wiki/{slug}",
+                "snippet": hit.get("snippet"),
+            }
+        )
+    return results
+
+
+wikipedia_tool_def = _search_tool_def(
+    "wikipedia_search_tool",
+    "Search Wikipedia (wikipedia.org) for encyclopedic overviews. "
+    "Use for background definitions, not as a substitute for peer-reviewed papers.",
+)
+
+
+def europe_pmc_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search Europe PMC / PubMed for journal articles (Nature, Cell, PNAS, eLife, IEEE)."""
+    data, error = _safe_get(
+        "https://www.ebi.ac.uk/europepmc/webservices/rest/search",
+        params={
+            "query": query,
+            "format": "json",
+            "pageSize": max(1, min(max_results, 10)),
+            "resultType": "lite",
+        },
+    )
+    if error:
+        return [{"error": error}]
+
+    results = []
+    for item in ((data.get("resultList") or {}).get("result")) or []:
+        doi = item.get("doi")
+        pmid = item.get("pmid")
+        url = (
+            f"https://doi.org/{doi}"
+            if doi
+            else (f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid else None)
+        )
+        results.append(
+            {
+                "source": "Europe PMC",
+                "title": item.get("title"),
+                "authors": item.get("authorString"),
+                "year": item.get("pubYear"),
+                "venue": item.get("journalTitle"),
+                "doi": f"https://doi.org/{doi}" if doi else None,
+                "url": url,
+                "cited_by_count": item.get("citedByCount", 0),
+                "is_oa": item.get("isOpenAccess") == "Y",
+            }
+        )
+    return results
+
+
+europe_pmc_tool_def = _search_tool_def(
+    "europe_pmc_search_tool",
+    "Search Europe PMC / PubMed for journal articles. Often returns Nature, Science, "
+    "Cell, PNAS, eLife, IEEE and other preferred publishers with DOI URLs.",
+)
+
+
+def ieee_acm_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search IEEE (10.1109) and ACM (10.1145) via Crossref → ieee.org / acm.org."""
+    return _crossref_by_prefixes(query, ["10.1109", "10.1145"], max_results)
+
+
+ieee_acm_tool_def = _search_tool_def(
+    "ieee_acm_search_tool",
+    "Search IEEE Xplore and ACM Digital Library papers via Crossref DOI prefixes "
+    "(ieee.org / acm.org). Prefer this for CS conference and journal papers.",
+)
+
+
+def journal_publisher_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search Nature, Science, Springer, ScienceDirect, PNAS, eLife via Crossref prefixes."""
+    return _crossref_by_prefixes(
+        query,
+        ["10.1038", "10.1126", "10.1007", "10.1016", "10.1073", "10.7554"],
+        max_results,
+    )
+
+
+journal_publisher_tool_def = _search_tool_def(
+    "journal_publisher_search_tool",
+    "Search Nature, Science, Springer, ScienceDirect/Cell, PNAS, and eLife via "
+    "Crossref (nature.com, science.org, springer.com, sciencedirect.com, pnas.org, "
+    "elifesciences.org). Use for high-prestige journal articles.",
+)
+
+
+ML_VENUE_SOURCE_IDS = {
+    "NeurIPS": "S4306420609",
+    "ICML": "S4306419644",
+    "JMLR": "S118988714",
+}
+
+
+def ml_venue_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search NeurIPS, ICML, JMLR via OpenAlex source IDs."""
+    merged = []
+    seen = set()
+    per = max(1, min(3, max_results))
+    for venue, source_id in ML_VENUE_SOURCE_IDS.items():
+        data, error = _safe_get(
+            "https://api.openalex.org/works",
+            params={
+                "search": query,
+                "per_page": per,
+                "filter": f"primary_location.source.id:{source_id}",
+                "select": "id,doi,display_name,publication_year,cited_by_count,"
+                "primary_location,open_access",
+            },
+        )
+        if error or not data:
+            continue
+        for work in data.get("results", []):
+            key = work.get("doi") or work.get("id")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            loc = (work.get("primary_location") or {}).get("source") or {}
+            oa = work.get("open_access") or {}
+            doi = work.get("doi")
+            merged.append(
+                {
+                    "source": "OpenAlex",
+                    "title": work.get("display_name"),
+                    "year": work.get("publication_year"),
+                    "venue": loc.get("display_name"),
+                    "doi": doi,
+                    "url": doi or oa.get("oa_url") or work.get("id"),
+                    "cited_by_count": work.get("cited_by_count", 0),
+                }
+            )
+            if len(merged) >= max_results:
+                return merged
+    return merged
+
+
+ml_venue_tool_def = _search_tool_def(
+    "ml_venue_search_tool",
+    "Search NeurIPS, ICML, JMLR, and OpenReview-indexed ML papers (neurips.cc, "
+    "icml.cc, jmlr.org, openreview.net) via OpenAlex.",
+)
+
+
+def nasa_ntrs_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search NASA Technical Reports Server (ntrs.nasa.gov)."""
+    data, error = _safe_get(
+        "https://ntrs.nasa.gov/api/citations/search",
+        params={"q": query},
+    )
+    if error:
+        return [{"error": error}]
+
+    results = []
+    for item in (data.get("results") or [])[: max(1, min(max_results, 10))]:
+        cid = item.get("id")
+        results.append(
+            {
+                "source": "NASA NTRS",
+                "title": item.get("title"),
+                "year": (item.get("published") or item.get("distributionDate") or "")[:4],
+                "venue": "NASA Technical Reports Server",
+                "url": f"https://ntrs.nasa.gov/citations/{cid}" if cid else None,
+                "summary": (item.get("abstract") or "")[:500] or None,
+            }
+        )
+    return results
+
+
+nasa_ntrs_tool_def = _search_tool_def(
+    "nasa_ntrs_search_tool",
+    "Search NASA Technical Reports Server (nasa.gov) for technical reports and "
+    "scientific publications.",
+)
+
+
+UNIVERSITY_RORS = {
+    "MIT": "042nb2s44",
+    "Stanford": "00f54p054",
+    "Harvard": "00hw9x109",
+}
+
+
+def university_search_tool(query: str, max_results: int = 5) -> list[dict]:
+    """Search works affiliated with MIT, Stanford, or Harvard via OpenAlex."""
+    rors = "|".join(UNIVERSITY_RORS.values())
+    data, error = _safe_get(
+        "https://api.openalex.org/works",
+        params={
+            "search": query,
+            "per_page": max(1, min(max_results, 10)),
+            "filter": f"institutions.ror:{rors},type:article",
+            "select": "id,doi,display_name,publication_year,cited_by_count,"
+            "authorships,primary_location,open_access",
+        },
+    )
+    if error:
+        return [{"error": error}]
+
+    results = []
+    for work in data.get("results", []):
+        venue = (work.get("primary_location") or {}).get("source") or {}
+        oa = work.get("open_access") or {}
+        affiliations = []
+        for authorship in work.get("authorships") or []:
+            for inst in authorship.get("institutions") or []:
+                name = inst.get("display_name")
+                if name and name not in affiliations:
+                    affiliations.append(name)
+        doi = work.get("doi")
+        results.append(
+            {
+                "source": "OpenAlex",
+                "title": work.get("display_name"),
+                "year": work.get("publication_year"),
+                "venue": venue.get("display_name"),
+                "institutions": affiliations[:6],
+                "doi": doi,
+                "url": doi or oa.get("oa_url") or work.get("id"),
+                "cited_by_count": work.get("cited_by_count", 0),
+            }
+        )
+    return results
+
+
+university_tool_def = _search_tool_def(
+    "university_search_tool",
+    "Search papers affiliated with MIT, Stanford, or Harvard (mit.edu, stanford.edu, "
+    "harvard.edu) via OpenAlex institution records.",
+)
+
+
 TOOL_MAPPING = {
     "arxiv_search_tool": arxiv_search_tool,
     "tavily_search_tool": tavily_search_tool,
     "openalex_search_tool": openalex_search_tool,
     "crossref_search_tool": crossref_search_tool,
+    "wikipedia_search_tool": wikipedia_search_tool,
+    "europe_pmc_search_tool": europe_pmc_search_tool,
+    "ieee_acm_search_tool": ieee_acm_search_tool,
+    "journal_publisher_search_tool": journal_publisher_search_tool,
+    "ml_venue_search_tool": ml_venue_search_tool,
+    "nasa_ntrs_search_tool": nasa_ntrs_search_tool,
+    "university_search_tool": university_search_tool,
 }
 
 TOOL_DEFS = [
@@ -351,6 +682,13 @@ TOOL_DEFS = [
     tavily_tool_def,
     openalex_tool_def,
     crossref_tool_def,
+    wikipedia_tool_def,
+    europe_pmc_tool_def,
+    ieee_acm_tool_def,
+    journal_publisher_tool_def,
+    ml_venue_tool_def,
+    nasa_ntrs_tool_def,
+    university_tool_def,
 ]
 
 
